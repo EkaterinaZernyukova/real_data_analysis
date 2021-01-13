@@ -37,14 +37,24 @@ LEFT JOIN a2 ON
 	A1.id = A2.id;
 
 
---Изменить значение TEXT в таблице A1 на  значение TEXT из таблицы A2 для A1.ID =  A2.ID
-UPDATE A1.TEXT SET A2.TEXT WHERE A1.id = A2.id;
-INSERT INTO a1 (TEXT) SELECT TEXT FROM a2 WHERE a1.id=a2.id;
-4.
+--4. Изменить значение TEXT в таблице A1 на значение TEXT из таблицы A2 для A1.ID =  A2.ID
+
+UPDATE
+	A1
+SET
+	text = A2.text
+FROM
+	A2
+WHERE
+	A1.id = A2.id;
+
+
+
 
 5.
 
 6. 
+INSERT INTO a1 (TEXT) SELECT TEXT FROM a2 WHERE a1.id=a2.id;
 
 --7.Удалить из таблицы A1 те строки, ID которых есть в A2
 DELETE FROM A1 WHERE a1.id=a2.id;
