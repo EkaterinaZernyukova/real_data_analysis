@@ -62,7 +62,11 @@ HAVING
 
 --6. Вставить в таблицу A1 только те ID и TEXT из таблицы A2, которых нет в A1
 
-INSERT INTO a1 (TEXT) SELECT TEXT FROM a2 WHERE a1.id=a2.id;
+--1й вариант решения
+INSERT into a1 (SELECT id, text  FROM A1 UNION SELECT id, text FROM A2 order BY id ASC);
+
+--2й вариант решения  
+INSERT into a1 (SELECT id, text FROM A1 EXCEPT SELECT id, text FROM A2);
 
 --7.Удалить из таблицы A1 те строки, ID которых есть в A2
-DELETE FROM A1 WHERE a1.id=a2.id;
+--DELETE FROM A1 WHERE a1.id=a2.id;
