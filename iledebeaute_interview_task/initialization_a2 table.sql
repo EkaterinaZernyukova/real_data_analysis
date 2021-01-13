@@ -11,3 +11,4 @@ INSERT INTO public.a2 ("text",id,"name") VALUES
 	 ('develop',8,'name                '),
 	 ('develop',10,'name                '),
 	 ('sales',12,NULL);
+	 

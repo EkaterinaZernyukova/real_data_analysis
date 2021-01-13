@@ -5,8 +5,6 @@ CREATE TABLE public.a1 (
 );
 
 
-
-
 INSERT INTO public.a1 ("id","text") VALUES
 	 (1,'min'),
 	 (6, NULL),
