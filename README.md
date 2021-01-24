@@ -1,2 +1,1 @@
-#### Analysis of real data from Airbnb and test analysis Titanic and Iris
-
+#### Different data analysis interview tasks. Also analysis of real data from Airbnb.
