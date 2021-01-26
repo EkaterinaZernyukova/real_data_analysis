@@ -126,9 +126,10 @@ GROUP BY
 
 SELECT
 	*,
-	avg("monthly_check") OVER( ) AS average_monthly_check
+	ROUND(avg("monthly_check") OVER( ) ::NUMERIC, 2) AS average_monthly_check
 FROM
-	digital_chesk
+	digital_chesk;
+
 --помесячно по клиентам среднее количество операций в месяц
  SELECT
 	"Id_client",
@@ -204,85 +205,152 @@ SELECT
 FROM
 	digital_gender
 ORDER BY
-	1
+	1;
 
 --	10. Вывести возрастные группы клиентов с шагом 10 лет и отдельно клиентов, у которых нет данной информации 
 --с параметрами сумма и количество операций за весь период, и поквартально, средние показатели и %.
+--Создать столбец age_step, заполнить возрастными группами 
 
-Создать столбец genter_step, заполнить по условию if,ELSE  
+ALTER TABLE digital_all ADD COLUMN "age_step" integer;
 
-ALTER TABLE digital_all ADD COLUMN "genter_step" integer;
-
--- ===============================
-
-SELECT *
-CASE
-    WHEN Age <= 10 THEN SET Age = 10
-    WHEN Age <= 0 OR Age IS NULL OR Age = '' THEN SET Age = 0
---    ELSE 'The quantity is under 30'
-END
-FROM digital_all;
-
-UPDATE digital_all
-SET "Age" = CASE
-    WHEN "Age" <= 10 THEN 10
-    WHEN "Age" <= 0 OR "Age" IS NULL THEN 0
---    ELSE 'The quantity is under 30'
-END;
--- CASE WHEN T.UserName is null THEN 0 ELSE 1 END 
---FROM digital_all; 
---AS U
---LEFT JOIN #TempTable AS T ON U.UserName = T.UserName
-
--- =====================
-
-IF "Age" <= 10 THEN
 UPDATE
 	digital_all
 SET
-	"genter_step" = "10" WHERE digital_all."Age" <= 10
-ELSE
-IF "Age"
-IS NULL OR "Age" = '' 
-THEN
-UPDATE
+	"age_step" = trunc("Age"/10.0) * 10+10;
+
+---Возрастные группы клиентов с шагом 10 лет с параметрами сумма и количество операций за квартал и средними показателями
+
+select 
+ "age_step",
+ count (DISTINCT "Id_check") AS quarter_count_checks,
+ROUND(sum("Sum_payment")::NUMERIC, 2) AS quarter_sum,
+ extract(quarter from "date_new") as quarter,
+ extract(year from "date_new") as year,
+ count (DISTINCT "Id_check")/ count (DISTINCT "Id_client") AS avg_count_checks_per_id, --(средняя сумма чека в группе в квартал)
+ROUND((sum("Sum_payment")/ count (DISTINCT "Id_check") )::NUMERIC, 2) AS avg_sum_in_check --(средняя сумма чека в группе в квартал)
+from 
+  digital_all
+where
+	"age_step" is not NULL
+group by 
+	1,5,4
+order by 
+1;
+  
+--Возрастные группы клиентов с шагом 10 лет с параметрами сумма и количество операций за весь период и средними показателями
+  
+SELECT
+	"age_step",
+	count (DISTINCT "Id_check") AS total_count_checks,
+	ROUND(sum("Sum_payment")::NUMERIC, 2) AS total_sum,
+	count (DISTINCT "Id_check")/ count (DISTINCT "Id_client") AS avg_count_checks_per_id, --(среднее количество чеков у клиентов в группе)
+	ROUND((sum("Sum_payment")/ count (DISTINCT "Id_check") )::NUMERIC, 2) AS avg_sum_in_check --(средняя сумма чека в группе)
+FROM
 	digital_all
-SET
-	"genter_step" = "0" WHERE "Age" IS NULL 
-END IF;
-
-SELECT field1, field2,
-  CASE
-    WHEN field1>0 THEN field2/field1
-    ELSE 0
-  END 
-  AS field3
-FROM test
+where
+	"age_step" is not NULL
+GROUP BY
+	1;
 
 
+--Возрастные группы клиентов с шагом 10 лет с параметрами сумма и количество операций за весь период, средними показателями и %
+--__________________________________________________________________________________
+--сводная таблица данных
+ CREATE TEMPORARY TABLE digital_group_age("age_step" int8 NULL, "total_count_checks" float8 NULL, 
+"total_sum" float8 NULL, "avg_count_checks_per_id" float8 NULL, "avg_sum_in_check" float8 NULL);
 
-IF v_user_id <> 0 THEN
-UPDATE
-	users
-SET
-	email = v_email
-WHERE
-	user_id = v_user_id;
-END IF;
+--INSERT INTO digital_group_age
+SELECT
+	"age_step",
+	count (DISTINCT "Id_check") AS total_count_checks,
+	ROUND(sum("Sum_payment")::NUMERIC, 2) AS total_sum,
+	count (DISTINCT "Id_check")/ count (DISTINCT "Id_client") AS avg_count_checks_per_id, --(среднее количество чеков у клиентов в группе)
+	ROUND((sum("Sum_payment")/ count (DISTINCT "Id_check") )::NUMERIC, 2) AS avg_sum_in_check --(средняя сумма чека в группе)
+FROM
+	digital_all
+GROUP BY
+	1;
 
-update digital_all set "Age" where "Age" <= 10 RETURNING 10;
-
-SELECT "Age", max("Age") FROM digital_all group by "Age" order by "Age"
+SELECT
+	*, ROUND((100* "total_sum" /sum("total_sum") OVER ())::NUMERIC,1) AS percent_total_sum, --(% суммы от всех возрастных групп)
+	ROUND((100* "total_count_checks" /sum("total_count_checks") OVER ())::NUMERIC,1) AS percent_total_check --(% чеков от всех возрастных групп)
+FROM
+	digital_group_age
+where
+	"age_step" is not NULL
+ORDER BY
+	1;
+____________________________________________
   
+ --Клиенты у которых нет данных о возрасте с параметрами сумма и количество операций за весь период и средними показателями
+  SELECT
+	"Id_client",
+	count (DISTINCT "Id_check") AS total_count_checks,
+	ROUND(sum("Sum_payment")::NUMERIC, 2) AS total_sum,
+	ROUND((sum("Sum_payment")/ count (DISTINCT "Id_check") )::NUMERIC, 2) AS avg_sum_in_check --(средняя сумма чека в группе)	
+FROM
+	digital_all
+where
+	"age_step" is NULL
+GROUP BY
+	1;
   
-SELECT count(*) FROM notifications WHERE DATE_PART('year',age(notification_date, birth_date)) < 4;
-  
-SELECT "Age" FROM digital_all WHERE "Age" BETWEEN 30 AND 40 ORDER BY "Age" ASC;
+
+---Клиенты у которых нет данных о возрасте с параметрами сумма и количество операций за квартал и средними показателями
+
+select 
+ "Id_client",
+ count (DISTINCT "Id_check") AS quarter_count_checks,
+ROUND(sum("Sum_payment")::NUMERIC, 2) AS quarter_sum,
+ extract(quarter from "date_new") as quarter,
+ extract(year from "date_new") as year,
+ROUND((sum("Sum_payment")/ count (DISTINCT "Id_check") )::NUMERIC, 2) AS avg_sum_in_check --(средняя сумма чека в квартал)
+from 
+  digital_all
+where
+	"age_step" is NULL
+group by 
+	1,5,4
+order by 
+1;
+
+
+---Клиенты у которых нет данных о возрасте с параметрами сумма и количество операций за весь период, средними показателями и %
+--__________________________________________________________________________________
+--сводная таблица данных
+CREATE TEMPORARY TABLE digital_group_no_age("Id_client" int8 NULL, "age_step" int8 NULL, "total_count_checks" float8 NULL, "total_sum" float8 NULL, 
+"avg_sum_in_check" float8 NULL);
+
+--INSERT INTO digital_group_no_age
+SELECT
+	"Id_client", "age_step",
+	count (DISTINCT "Id_check") AS total_count_checks,
+	ROUND(sum("Sum_payment")::NUMERIC, 2) AS total_sum,
+	ROUND((sum("Sum_payment")/ count (DISTINCT "Id_check") )::NUMERIC, 2) AS avg_sum_in_check --(средняя сумма чека в группе)
+FROM
+	digital_all
+GROUP BY
+	1,2;
+
+SELECT
+	*, ROUND((100* "total_sum" /sum("total_sum") OVER ())::NUMERIC,1) AS percent_total_sum, --(% суммы от всех клиентов без данных о возрасте)
+	ROUND((100* "total_count_checks" /sum("total_count_checks") OVER ())::NUMERIC,1) AS percent_total_check --(% чеков от всех клиентов без данных о возрасте)
+FROM
+	digital_group_no_age
+where
+	"age_step" is NULL
+ORDER BY
+	1;
+
+
+
+
+
+
+
+
+
+
+
 
   
-    UPDATE users
-    SET status = 4
-    WHERE age > 20
-    RETURNING id
-)
-	
