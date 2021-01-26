@@ -206,4 +206,83 @@ FROM
 ORDER BY
 	1
 
---	10. Вывести возрастные группы клиентов с шагом 10 лет и отдельно клиентов, у которых нет данной информации с параметрами
+--	10. Вывести возрастные группы клиентов с шагом 10 лет и отдельно клиентов, у которых нет данной информации 
+--с параметрами сумма и количество операций за весь период, и поквартально, средние показатели и %.
+
+Создать столбец genter_step, заполнить по условию if,ELSE  
+
+ALTER TABLE digital_all ADD COLUMN "genter_step" integer;
+
+-- ===============================
+
+SELECT *
+CASE
+    WHEN Age <= 10 THEN SET Age = 10
+    WHEN Age <= 0 OR Age IS NULL OR Age = '' THEN SET Age = 0
+--    ELSE 'The quantity is under 30'
+END
+FROM digital_all;
+
+UPDATE digital_all
+SET "Age" = CASE
+    WHEN "Age" <= 10 THEN 10
+    WHEN "Age" <= 0 OR "Age" IS NULL THEN 0
+--    ELSE 'The quantity is under 30'
+END;
+-- CASE WHEN T.UserName is null THEN 0 ELSE 1 END 
+--FROM digital_all; 
+--AS U
+--LEFT JOIN #TempTable AS T ON U.UserName = T.UserName
+
+-- =====================
+
+IF "Age" <= 10 THEN
+UPDATE
+	digital_all
+SET
+	"genter_step" = "10" WHERE digital_all."Age" <= 10
+ELSE
+IF "Age"
+IS NULL OR "Age" = '' 
+THEN
+UPDATE
+	digital_all
+SET
+	"genter_step" = "0" WHERE "Age" IS NULL 
+END IF;
+
+SELECT field1, field2,
+  CASE
+    WHEN field1>0 THEN field2/field1
+    ELSE 0
+  END 
+  AS field3
+FROM test
+
+
+
+IF v_user_id <> 0 THEN
+UPDATE
+	users
+SET
+	email = v_email
+WHERE
+	user_id = v_user_id;
+END IF;
+
+update digital_all set "Age" where "Age" <= 10 RETURNING 10;
+
+SELECT "Age", max("Age") FROM digital_all group by "Age" order by "Age"
+  
+  
+SELECT count(*) FROM notifications WHERE DATE_PART('year',age(notification_date, birth_date)) < 4;
+  
+SELECT "Age" FROM digital_all WHERE "Age" BETWEEN 30 AND 40 ORDER BY "Age" ASC;
+
+  
+    UPDATE users
+    SET status = 4
+    WHERE age > 20
+    RETURNING id
+)
+	
