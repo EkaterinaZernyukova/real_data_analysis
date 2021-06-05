@@ -15,7 +15,8 @@ select count(*) from test.ab_data; --505 034
 select * , max (event_id) meid from test.events_data group by 1,2,3,4;
 
 
-select data_event, count(distinct user_id) from (select *, to_timestamp(floor(event_timestamp/1000000)) data_event , max (event_id) meid from test.events_data group by 1,2,3,4) m group by 1;
+select date(data_event), count(distinct user_id) from (select *, to_timestamp(floor(event_timestamp/1000000)) data_event , max (event_id) meid from test.events_data group by 1,2,3,4) m group by 1;
+
 SELECT temp_files AS "Temporary files", temp_bytes AS "Size of temporary files"
 FROM test;
 --___________________________________________________________________________________
@@ -40,7 +41,20 @@ select distinct param_value_string from (select * from test.parameters_data wher
 --уникальность..стохастика..пропуски
 select event_id, count(event_id) from (select * , max (event_id) meid from test.events_data group by 1,2,3,4) m group by event_id having count(*)>1;
 select * , max (event_id) meid from test.events_data group by 1,2,3,4;
---______________
+--_________________________________________________
+-- убрать null
+select distinct param_value_string from test.parameters_data where param_key = 'currency_amount'; --уникальные
+select count(param_value_string) from test.parameters_data where param_key = 'currency_amount';--кол-во значений 271 035
+
+select count(*) from (select  event_id, param_key, param_value_string, REGEXP_MATCHES(param_value_string, '^[0-9]*[.,][0-9]+$') as param_value_double
+from (select * from test.parameters_data where param_key = 'currency_amount')m )n;
+select count(*) from test.parameters_data where param_key = 'currency_amount' and param_value_string like '%.%'; --3 826
+select count(*) from test.parameters_data where param_key = 'currency_amount' and param_value_double like '%.%'; --0 
+
+
+--_________________________________________________
+
+
 select * from (select *, (secon.event_id) searh from test.events_data one left join test.parameters_data secon on one.event_id = secon.event_id)m where searh is null;
 
 select param_key , count(param_key) coe from test.parameters_data group by param_key; having count(*)>1;
@@ -48,4 +62,16 @@ select param_key , count(param_key) coe from test.parameters_data group by param
 select count(*) from test.parameters_data where param_value_int = ''; --пустое поле
 select * from test.parameters_data  where param_value_string like '';
 select event_id from test.parameters_data group by event_id having count(*)>1;
+--____________________________________________
+--определяется путем соотношения брутто-дохода от пользователей к среднему показателю посещаемости в день/неделю/месяц.
+--дата - количество посещений - доход
+
+select max (cast(param_value_string AS float))from test.parameters_data where param_key = 'currency_amount';
+
+select  count(*) from test.parameters_data where param_value_string like ''; --228 872
+
+select  count(*) from test.parameters_data where param_value_string is NULL; --2
+
+select  * from test.parameters_data where param_value_string is not null and (param_value_int not like '' or param_value_float not like '' or param_value_double not like '') ;--228872
+
 
