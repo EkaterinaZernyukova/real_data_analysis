@@ -43,3 +43,6 @@ from
 order by
 	path
 limit 100;
+
+
+drop table lider;
