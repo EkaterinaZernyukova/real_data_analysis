@@ -148,45 +148,44 @@ users as (select m.max_event_id, date(m.data_event) data_event, m.user_id, m.eve
 	(select *, date(to_timestamp(floor(event_timestamp/1000000))) data_event , max (event_id) max_event_id from test.events_data group by 1,2,3,4) m 
 	left join ab_test on m.user_id = ab_test.user_id and m.data_event>= ab_test.joined_dt)
 select ab_group, count(distinct user_id) DAU from users group by 1;
-	
+--_________________________________________________________________________________________--
+--CREATE TEMP TABLE grooping AS 
 with 
-collection as (
-		select event_id, param_key, param_value
-		from
-		(select event_id, param_key, 
-		coalesce (param_value_string, param_value_int, param_value_float, param_value_double) param_value
-							from (select event_id, param_key, 
-												 NULLIF (param_value_string,'') param_value_string, 
-												 NULLIF (param_value_int,'') param_value_int, 
-												 NULLIF (param_value_float,'') param_value_float, 
-												 NULLIF (param_value_double,'') param_value_double 
-								 from  test.parameters_data) n
-		where param_key is not null) m),
 ab_test as (select user_id, ab_group, date(to_timestamp(floor(joined/1000000))) joined_dt from test.ab_data order by joined),
-users as (select m.max_event_id, date(m.data_event) data_event, m.user_id, m.event_name , ab_test.ab_group from 
+users as (select m.max_event_id, date(m.data_event) data_event, m.user_id, m.event_name, ab_test.ab_group from 
 	(select *, date(to_timestamp(floor(event_timestamp/1000000))) data_event , max (event_id) max_event_id from test.events_data group by 1,2,3,4) m 
-	left join ab_test on m.user_id = ab_test.user_id and m.data_event>= ab_test.joined_dt),
-dau as (select data_event, ab_group, count(distinct user_id) DAU from users group by 1,2),
-mau as (select ab_group, count(distinct user_id) MAU from users group by 1)	
-select distinct c1.event_id,
-		c2.param_value as product_id, 
-		coalesce (cast(c3.param_value as integer), 1 ) as quantity,  
-		price_game.price,
-		events.user_id, 
-		events.data_event, 
-		events.event_name, 
-		cast((price_game.price * coalesce (cast(c3.param_value as integer), 1 ))as double precision) revenue,
-		count (events.user_id) over (partition by events.data_event) users_in_day
-			from collection c1 
-					left join collection c2 on c1.event_id = c2.event_id and c2.param_key = 'product_id'
-					left join collection c3 on c1.event_id = c3.event_id and c3.param_key = 'quantity'
-				    left join test.prices_data price_game on c2.param_value = price_game.product_id
-				    left join (select max_event_id, date(data_event) data_event, user_id, event_name from 
-			(select *, to_timestamp(floor(event_timestamp/1000000)) data_event , 
-			max (event_id) max_event_id from test.events_data where user_id in (select user_id from (
-select user_id, ab_group, date(to_timestamp(floor(joined/1000000))) joined_dt from test.ab_data order by joined) m where ab_group = 1) group by 1,2,3,4) m ) events 
-on events.max_event_id = c1.event_id
-where c1.param_key = 'product_id';
+	left join ab_test on m.user_id = ab_test.user_id and m.data_event>= ab_test.joined_dt)
+select 
+	 users.max_event_id,
+	 users.data_event, 
+	 users.user_id,
+	 users.event_name, 
+	 users.ab_group,
+	 collection_pay.product_id,
+	 collection_pay.price,
+	 count(collection_pay.product_id) over (partition by users.data_event, users.user_id) count_purchse 
+	 from users
+	 	left join test.collection_pay on collection_pay.event_id = users.max_event_id;
+	 
+select ab_group,
+		count(distinct user_id) all_users_in_group,
+		count(product_id) count_pay_users_in_group,
+		sum(price) revenue,
+		sum(count_purchse) count_purchse,
+		sum(price)/count(product_id) ARPPU,
+		(cast(sum(count_purchse) as float) / cast (count(distinct user_id) as float) *100) conversion_rate
+from grooping group by 1;
+	  
+	--	 dau.dau,
+--	 mau.mau 
+	 
+	 --dau as (select data_event, ab_group, count(distinct user_id) DAU from users group by 1,2),
+--mau as (select ab_group, count(distinct user_id) MAU from users group by 1)
+	 
+	 
+--	 	left join dau on users.data_event = dau.data_event
+--	 	left join mau on mau.ab_group = users.ab_group;
+	 
 	
 	
 	

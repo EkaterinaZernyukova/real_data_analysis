@@ -1,8 +1,20 @@
-select  * from test.events_data where event_id = '-2376174690499544971'; --активности
+select  * from test.events_data where event_id = '-9218158630089796543'; --активности
 select  * from test.prices_data; --продукты и цены
-select  * from test.ab_data order by joined; --номер группы АБ-теста, в которую попал игрок (0— контрольная, 1 — тестовая), дата в unix
-select  * from test.parameters_data where event_id = '-2376174690499544971';
+select  count(user_id) from test.ab_data group by ab_group; --номер группы АБ-теста, в которую попал игрок (0— контрольная, 1 — тестовая), дата в unix
+select  * from test.parameters_data where event_id = '-9218158630089796543';
 select name,setting,boot_val,reset_val from pg_settings where name='temp_file_limit';
+
+select count(*) from test.collection_pay; --7844
+
+--______________________________________________________________________
+--ав тест
+select * from (
+select user_id, ab_group, date(to_timestamp(floor(joined/1000000))) joined_dt from test.ab_data) n where user_id = '82f57de9-226c-47d3-a757-aa781f5112c1';
+
+
+
+select max(joined_dt) from (
+select user_id, ab_group, date(to_timestamp(floor(joined/1000000))) joined_dt from test.ab_data order by joined) m where ab_group = 0;
 
 --__________________________________________________________________
 --count
@@ -14,8 +26,10 @@ select count(*) from test.ab_data; --505 034
 --уникальные активности:
 select * , max (event_id) meid from test.events_data group by 1,2,3,4;
 
+select * from (
 select max_event_id, date(data_event), user_id, event_name from 
-	(select *, to_timestamp(floor(event_timestamp/1000000)) data_event , max (event_id) max_event_id from test.events_data group by 1,2,3,4) m ;
+	(select *, to_timestamp(floor(event_timestamp/1000000)) data_event , max (event_id) max_event_id from test.events_data group by 1,2,3,4) m )n
+where user_id = '82f57de9-226c-47d3-a757-aa781f5112c1';
 
 
 select date(data_event), count(distinct user_id) from 
@@ -136,33 +150,30 @@ with collection as (
 								 from  test.parameters_data) n
 		where param_key is not null) m) 
 select 	s.data_event, 
-		count (s.user_id)	count_purchases, 
-		count (distinct s.user_id) count_uniq_pay_user, 
-		sum (s.revenue) total_revenue, 
-		total_count.DAU,
-		sum(s.revenue)/total_count.DAU ARPU, 
-		sum(s.revenue)/count(distinct s.user_id) ARPPU,
-		cast(count(distinct s.user_id)as float)/cast(total_count.DAU as float) paying_share,
-		(cast(count(s.user_id) as float) / cast (total_count.DAU as float) *100) conversion_rate
+product_idcollection_paycollection_paycollection_paycollection_paycollection_paycollection_paycollection_pay
 from (
 		select distinct c1.event_id, 
 		c2.param_value as product_id, 
-		coalesce (cast(c3.param_value as integer), 1 ) as quantity, 
-		c4.param_value as currency, 
+		coalesce (cast(c3.param_value as integer), 1 ) as quantity,  
 		price_game.price,
-		events.user_id, events.data_event, events.event_name, 
-		cast((price_game.price * coalesce (cast(c3.param_value as integer), 1 ))as double precision) revenue
+		events.user_id, 
+		events.data_event, 
+		events.event_name, 
+		cast((price_game.price * coalesce (cast(c3.param_value as integer), 1 ))as double precision) revenue,
+		count (events.user_id) over (partition by events.data_event) users_in_day
 			from collection c1 
 					left join collection c2 on c1.event_id = c2.event_id and c2.param_key = 'product_id'
 					left join collection c3 on c1.event_id = c3.event_id and c3.param_key = 'quantity'
-					left join collection c4 on c1.event_id = c4.event_id and c4.param_key = 'currency'
 				    left join test.prices_data price_game on c2.param_value = price_game.product_id
 				    left join (select max_event_id, date(data_event) data_event, user_id, event_name from 
 			(select *, to_timestamp(floor(event_timestamp/1000000)) data_event , 
-			max (event_id) max_event_id from test.events_data group by 1,2,3,4) m ) events on events.max_event_id = c1.event_id
+			max (event_id) max_event_id from test.events_data where user_id in (select user_id from (
+select user_id, ab_group, date(to_timestamp(floor(joined/1000000))) joined_dt from test.ab_data order by joined) m where ab_group = 1) group by 1,2,3,4) m ) events 
+on events.max_event_id = c1.event_id
 where c1.param_key = 'product_id') s 
 left join (select date(data_event) data_event, count(distinct user_id) DAU from 
-		(select *, to_timestamp(floor(event_timestamp/1000000)) data_event , max (event_id) max_event_id from test.events_data group by 1,2,3,4) m group by 1) total_count
+		(select *, to_timestamp(floor(event_timestamp/1000000)) data_event , max (event_id) max_event_id from test.events_data where user_id in (select user_id from (
+select user_id, ab_group, date(to_timestamp(floor(joined/1000000))) joined_dt from test.ab_data order by joined) m where ab_group = 1) group by 1,2,3,4) m group by 1) total_count
 		on total_count.data_event = s.data_event
 group by s.data_event, total_count.dau ;
 		   
