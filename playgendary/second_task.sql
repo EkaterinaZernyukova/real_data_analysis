@@ -149,7 +149,7 @@ users as (select m.max_event_id, date(m.data_event) data_event, m.user_id, m.eve
 	left join ab_test on m.user_id = ab_test.user_id and m.data_event>= ab_test.joined_dt)
 select ab_group, count(distinct user_id) DAU from users group by 1;
 --_________________________________________________________________________________________--
---CREATE TEMP TABLE grooping AS 
+CREATE TEMP TABLE grooping AS 
 with 
 ab_test as (select user_id, ab_group, date(to_timestamp(floor(joined/1000000))) joined_dt from test.ab_data order by joined),
 users as (select m.max_event_id, date(m.data_event) data_event, m.user_id, m.event_name, ab_test.ab_group from 
@@ -167,25 +167,22 @@ select
 	 from users
 	 	left join test.collection_pay on collection_pay.event_id = users.max_event_id;
 	 
-select ab_group,
+select 
+		data_event,
 		count(distinct user_id) all_users_in_group,
 		count(product_id) count_pay_users_in_group,
 		sum(price) revenue,
 		sum(count_purchse) count_purchse,
 		sum(price)/count(product_id) ARPPU,
 		(cast(sum(count_purchse) as float) / cast (count(distinct user_id) as float) *100) conversion_rate
-from grooping group by 1;
+from grooping where ab_group = 1 group by 1;
 	  
-	--	 dau.dau,
---	 mau.mau 
-	 
-	 --dau as (select data_event, ab_group, count(distinct user_id) DAU from users group by 1,2),
---mau as (select ab_group, count(distinct user_id) MAU from users group by 1)
-	 
-	 
---	 	left join dau on users.data_event = dau.data_event
---	 	left join mau on mau.ab_group = users.ab_group;
-	 
+select ab_group,
+		user_id,
+		sum(price)/count(product_id) ARPPU,
+		(cast(sum(count_purchse) as float) / cast (count(distinct user_id) as float) *100) conversion_rate
+from grooping group by 1,2;
+
 	
 	
 	
